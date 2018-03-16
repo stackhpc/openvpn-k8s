@@ -1,0 +1,8 @@
+---
+- name: centos, RHEL | Install openvpn requirements
+  package: name=epel-release
+  when: ansible_os_family == "RedHat" or ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+
+- name: package | Install openvpn
+  package: name=openvpn update_cache=yes
+...

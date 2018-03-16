@@ -1,0 +1,7 @@
+---
+openvpn_dir: /etc/openvpn
+openvpn_client_certs_dir: /tmp/openvpn-client-certs
+easyrsa_version: 3
+easyrsa_dir: "{{ openvpn_dir }}/easy-rsa"
+easyrsa_install_path: "/usr/share/easy-rsa/{{ easyrsa_version }}"
+...

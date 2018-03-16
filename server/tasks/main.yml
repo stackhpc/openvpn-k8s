@@ -1,0 +1,103 @@
+---
+- name: Install easyrsa on server
+  package: name=easy-rsa update_cache=yes
+
+- name: Find all easyrsa files
+  find:
+    paths: "{{ easyrsa_install_path }}" 
+    recurse: yes
+  register: easyrsa
+
+- name: Copy easyrsa files to openvp folder
+  copy:
+    remote_src: yes 
+    src: "{{ item.path }}"
+    dest: "{{ easyrsa_dir }}/{{ item.path | relpath(easyrsa_install_path) }}"
+  with_items: "{{ easyrsa.files }}"
+
+- name: Initialise PKI 
+  shell: "./easyrsa init-pki chdir={{ easyrsa_dir }}"
+  register: easyrsa_init
+  ignore_errors: yes
+
+- name: Build CA
+  shell: echo 'Easy-RSA CA' | ./easyrsa build-ca nopass chdir={{ easyrsa_dir }}
+  ignore_errors: yes
+
+- name: Build openvpn server credentials
+  shell: "{./easyrsa build-server-full {{ inventory_hostname }} nopass chdir={{ easyrsa_dir }}"
+  ignore_errors: yes
+
+- name: Prepare clients
+  shell: "./easyrsa build-client-full {{ item }} nopass chdir={{ easyrsa_dir }}"
+  with_items: '{{ groups["openvpn-client"] }}'
+  ignore_errors: yes
+
+- name: Does DH exist?
+  stat:
+    path: "{{ easyrsa_dir }}/pki/dh.pem"
+  register: dh
+ 
+- name: Generate DH
+  shell: "./easyrsa gen-dh chdir={{ easyrsa_dir }}"
+  when: dh.stat.islnk is not defined
+
+- name: Copy CA and DH from their remote sources to remote openvpn dir
+  copy:
+    remote_src: yes
+    src: "{{ easyrsa_dir }}/pki/{{ item }}"
+    dest: "{{ openvpn_dir }}/"
+  with_items:
+    - dh.pem
+    - ca.crt
+
+- name: Does TA exist?
+  stat:
+    path: "{{ openvpn_dir }}/ta.key"
+  register: ta
+
+- name: Generate TA
+  shell: "openvpn --genkey --secret {{ openvpn_dir }}/ta.key"
+  when: ta.stat.islnk is not defined
+  notify: restart openvpn
+
+- name: Copy server files to openvpn folder
+  copy:
+    remote_src: yes
+    src: "{{ easyrsa_dir }}/pki/{{ item.dir }}/{{ inventory_hostname }}.{{ item.ext }}"
+    dest: "{{ openvpn_dir }}/" 
+  with_items: [{ dir: issued, ext: crt }, { dir: private, ext: key }]
+
+- name: Copy over server configuration
+  template:
+    src: server.conf.j2
+    dest: "{{ openvpn_dir }}/{{ inventory_hostname }}.conf"
+  notify: restart openvpn
+
+- name: Static IP configs for named hosts
+  lineinfile:
+    create: yes
+    path: "{{ openvpn_dir }}/ccd/{{ item }}"
+    regexp: "^ifconfig-push"
+    line: "ifconfig-push {{ hostvars[item]['ip']}} {{ hostvars[inventory_hostname]['ip'] }}" 
+  with_items: "{{ groups['openvpn-client'] }}"
+  notify: restart openvpn
+
+- name: Fetch client files
+  fetch:
+    src: "{{ easyrsa_dir }}/pki/{{ item.0.dir }}/{{ item.1 }}.{{ item.0.ext }}"
+    dest: "{{ openvpn_client_certs_dir }}/" 
+    flat: yes
+  with_nested:
+  - [{ dir: issued, ext: crt }, { dir: private, ext: key }]
+  - "{{ groups['openvpn-client'] }}"
+
+- name: Fetch remaining certificates
+  fetch:
+    src: "{{ item }}"
+    dest: "{{ openvpn_client_certs_dir }}/" 
+    flat: yes
+  with_items:
+  - "{{ easyrsa_dir }}/pki/ca.crt"
+  - "{{ openvpn_dir }}/ta.key"
+
