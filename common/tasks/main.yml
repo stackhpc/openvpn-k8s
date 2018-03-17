@@ -3,6 +3,17 @@
   package: name=epel-release
   when: ansible_os_family == "RedHat" or ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
 
-- name: package | Install openvpn
-  package: name=openvpn update_cache=yes
+- name: Install packages
+  package:
+    name: "{{ item }}"
+    update_cache: yes
+  with_items:
+  - openvpn
+  - ntp
+
+- name: Enable and start ntpd
+  service:
+    name: ntpd
+    enabled: yes
+    state: started
 ...
