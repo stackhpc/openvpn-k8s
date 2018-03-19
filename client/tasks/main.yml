@@ -23,4 +23,5 @@
     - ca.crt
     - ta.key
   notify: restart openvpn
+
 ...

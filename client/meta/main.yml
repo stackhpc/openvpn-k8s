@@ -1,4 +1,4 @@
 ---
 dependencies:
-- role: openvpn-setup/common
+- role: openvpn-setup-ansible/common
 ...

@@ -1,4 +1,5 @@
 ---
+
 - name: Install easyrsa on server
   package: name=easy-rsa update_cache=yes
 
@@ -101,3 +102,4 @@
   - "{{ easyrsa_dir }}/pki/ca.crt"
   - "{{ openvpn_dir }}/ta.key"
 
+...
