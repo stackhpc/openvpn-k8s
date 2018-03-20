@@ -9,7 +9,7 @@ Host 172.17.8.*
   ProxyCommand ssh -q -W %h:%p 78.31.111.99 #-q only required on Mac
 Host 78.31.111.99
   User centos
-  IdentityFile ~/.ssh/id_rsa
+  IdentityFile ~/.ssh/k8s
   ForwardAgent yes
 ```
 
