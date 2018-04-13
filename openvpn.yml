@@ -3,9 +3,11 @@
   - openvpn-server
   roles:
   - { role: openvpn-setup-ansible/server }
+  become: yes
 
 - name: openvpn | client role
   hosts:
   - openvpn-client
   roles:
   - { role: openvpn-setup-ansible/client }
+  become: yes
